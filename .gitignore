@@ -56,3 +56,6 @@ docs/_build/
 *.JPG
 *.jpg
 *.bin
+
+.idea/
+venv/

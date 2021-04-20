@@ -2,12 +2,12 @@
 # -*- coding: utf8 -*-
 
 import binascii
-from skytraq.venus6 import Venus6
+from skytraq.venus8 import Venus8
 
 serial_speed = None # 9600
 
 # open com port
-gps = Venus6('/dev/ttyUSB0', serial_speed, debug=False)
+gps = Venus8('/dev/ttyUSB0', serial_speed, debug=False)
 
 if serial_speed == None:
   # try to guess serial speed

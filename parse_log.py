@@ -2,7 +2,7 @@
 # -*- coding: utf8 -*-
 
 import binascii
-from skytraq.venus6 import Venus6
+from skytraq.venus8 import Venus8
 from datetime import timedelta, datetime
 from pytz import timezone
 import pytz
@@ -12,7 +12,7 @@ local_zone = timezone('America/Toronto')
 
 with open('raw.bin', 'rb') as raw:
 	data = raw.read()
-	entries = Venus6.decodeLog(data)
+	entries = Venus8.decodeLog(data)
 
 	# dump entries to gpx file
 	with open('dump.gpx', 'w') as gpx:

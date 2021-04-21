@@ -2,13 +2,13 @@
 
 import serial
 import time
-import datetime
 import math
 from ftplib import FTP
 import struct
+import datetime
 
-class Venus6:
-  "Venus6 GPS object"
+class Venus8:
+  "Venus8 GPS object"
 
   MSG_TYPE_SOFT_VERSION_Q     = 0x02
   MSG_TYPE_SOFT_CRC_Q         = 0x03
@@ -35,6 +35,14 @@ class Venus6:
   MSG_TYPE_EPHEMERIS_GET_R    = 0xB1
   MSG_TYPE_WAAS_GET_R         = 0xB3
   MSG_TYPE_NAV_MODE_GET_R     = 0xB5
+
+  MSG_TYPE_RESTART = 0x01
+  MSG_TYPE_NMEA_ENABLE = 0x09
+
+  HOT_START_MODE = 0x01
+  WARM_START_MODE = 0x02
+  COLD_START_MODE = 0x03
+  AGPS_WARM_START_MODE = 0x04
 
   def __init__(self, serialport, baudrate, debug=False):
     if baudrate == None:
@@ -418,20 +426,20 @@ class Venus6:
 
       if entryType == 2 or entryType == 3:
         # full fix
-        (speed, wn, tow, ecef_x, ecef_y, ecef_z) = Venus6.__decodeFull(data, offset)
+        (speed, wn, tow, ecef_x, ecef_y, ecef_z) = Venus8.__decodeFull(data, offset)
 
         # convert ecef to geodetic system
-        (lon, lat, alt) = Venus6.__ecef_to_geo(ecef_x, ecef_y, ecef_z)
+        (lon, lat, alt) = Venus8.__ecef_to_geo(ecef_x, ecef_y, ecef_z)
 
         # convert time
-        date = Venus6.__gps_time_to_timestamp(wn, tow)
+        date = Venus8.__gps_time_to_timestamp(wn, tow)
 
         # add entry
         entries.append([date, lat, lon, alt, speed])
         offset += 18
       elif entryType == 4:
         # read compact
-        (speed, d_tow, d_x, d_y, d_z) = Venus6.__decodeCompact(data, offset)
+        (speed, d_tow, d_x, d_y, d_z) = Venus8.__decodeCompact(data, offset)
 
         tow += d_tow
         ecef_x += d_x
@@ -439,10 +447,10 @@ class Venus6:
         ecef_z += d_z
 
         # convert ecef to geodetic system
-        (lon, lat, alt) = Venus6.__ecef_to_geo(ecef_x, ecef_y, ecef_z)
+        (lon, lat, alt) = Venus8.__ecef_to_geo(ecef_x, ecef_y, ecef_z)
 
         # convert time
-        date = Venus6.__gps_time_to_timestamp(wn, tow)
+        date = Venus8.__gps_time_to_timestamp(wn, tow)
 
         # add entry
         entries.append([date, lat, lon, alt, speed])
@@ -519,10 +527,41 @@ class Venus6:
       if self.debug:
         print('got data', len(eph_data), eph_data)
 
+    # split content (32*94 bytes)
+    eph_data_split_length = len(eph_data) / 94
+    split_bytearray = []
+
+    for i in range(0, int(eph_data_split_length)):
+      chunk = eph_data[(i * 94):((i + 1) * 94)]
+      if chunk[0:4] != b'\xA0\xA1\x00\x57':
+        raise Exception("chunk data mismatch")
+      if chunk[-2:] != b'\x0D\x0A':
+        raise Exception("chunk data mismatch")
+      satellite_id = struct.unpack('>H', chunk[5:7])
+      message_id = chunk[4]
+      print("(Msg ID: {}) satellite_id ".format(message_id), satellite_id)
+      split_bytearray.append(chunk)
+
+    if (len(split_bytearray)) != 32:
+      raise Exception("split_bytearray mismatch")
+
     # send content to host
     if self.debug:
       print("Start uploading data to host")
-    self.serial.write(eph_data)
+
+    self.serial.flushInput()
+    self.serial.flushOutput()
+
+    # self.serial.write(eph_data)
+    i = 0
+    for chunk in split_bytearray:
+      i += 1
+      if self.debug:
+        print("Chunk {}: {}".format(i, chunk))
+      self.serial.write(chunk)
+      respID, payload = self.readResponse(expectedRespId=self.MSG_TYPE_ACK, expectedLen=1)
+      print("[{}] Resp ID: {}, Payload: {}".format(i, respID, payload))
+
     if self.debug:
       print("Done")
 
@@ -530,3 +569,13 @@ class Venus6:
     time.sleep(1)
     # drop received data
     self.serial.flushInput()
+
+  def send_restart(self, restart_type=HOT_START_MODE):
+    dt = datetime.datetime.utcnow()
+    year_dt = struct.pack('>H', dt.year)
+    self.sendCmd(self.MSG_TYPE_RESTART, bytearray([restart_type, year_dt[0], year_dt[1], dt.month, dt.day,
+                                                   dt.hour, dt.minute, dt.second, 0, 0, 0, 0, 0, 0]))
+    return True
+
+  def enable_nmea_output(self, enable=True):
+    self.sendCmd(self.MSG_TYPE_NMEA_ENABLE, bytearray([1 if enable else 0, 0]))

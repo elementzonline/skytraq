@@ -1,21 +1,14 @@
 Skytraq
 =======
 
-Skytraq Venus 6 GPS binary log protocol implentation
+Skytraq Venus 8 GPS binary protocol implentation
 
 # Purpose
 
-I've bought a nameless GPS USB DATA LOGGER on ebay (ref: *SJ-5282-DL*). This
-GPS device outputs NMEA messages using a USB to serial port converter. It
+This is the repository that gives sample codes for testing S1216F8 Skytrack GPS/GNSS module. 
+This GPS device outputs NMEA messages which can be read in the PC using a USB to serial port converter. It
 also has the ability to store gps logs (date, position and speed) to its
 internal memory.
-To acces those gps logs, this device was sold with a proprietary software
-called *GPS Photo Tagger*, that only works on windows.
-My goal was to be able to access those logs using linux and Mac OS, in order
-to add gps data to my pictures.
-After some research, it appeared that this device was using a
-*Skytraq Venus 6 GPS* module (many other gps modules uses Skytraq Venus 6
-module, so it might work with other devices as well).
 Skytraq uses a proprietary binary protocol to communicate with the module.
 This protocol is specified in two application notes:
 - [Binary Messages of Venus 6 GPS](http://dlnmh9ip6v2uc.cloudfront.net/datasheets/Sensors/GPS/AN0003_v1.4.19.pdf)
@@ -27,26 +20,21 @@ This protocol is specified in two application notes:
 - read/write navigation mode
 - read/write waas status
 - read software version / crc
-- read data logs from device
 - configure serial port speed
 - probe serial port speed
-- write ephemeris data (agps) to device (UNTESTED)
+- write ephemeris data (agps) to device
+- enable/disable NMEA output
+- restart system ( hot start, warm start, gps warmstart)
 
 ## TODO
-- read/write data logging parameters
-- read/write nmea output configuration
 - read/write output format
 - read/write position output rate
-- restart system
 - reset to factory default
 
 # Usage
 
-- to extract log data a sample program extract_log.py is provided. It
-dumps the logs from the device and generate a dump.gpx file.
 - to update ephemeris data use agps.py (UNTESTED)
 
 # Reference to other similar projects
 
-- https://github.com/makefu/skytraq-datalogger quite working but some agps features seems
-different from what I've got.
+- https://github.com/r0ro/skytraq - the core code is derived from this repo which was for Venus6 type chip.
